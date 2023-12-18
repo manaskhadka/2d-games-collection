@@ -1,6 +1,7 @@
-# Blank canvas with clock object
-    # clock object helps control time + frames
-
+"""
+Basic program for pygame. 
+Creates a blank display and allows for user input to quit
+"""
 import pygame 
 from sys import exit
 

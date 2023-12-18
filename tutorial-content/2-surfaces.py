@@ -1,11 +1,10 @@
 """
-Displaying images with surfaces (pygame object representing images).
+Displaying images with surfaces in pygame.
 Main concept:
     There exists a display surface that is always visible (game window)
     We can make as many surfaces as we want that we can render on display surface
     Analogy: Display surface = whiteboard, surfaces = sticky notes
 """
-
 import pygame 
 from sys import exit
 

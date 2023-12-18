@@ -1,6 +1,7 @@
 """
 Basic animations in pygame.
-
+Moves a static image from right to left. 
+Repositions image after moving offscreen to give a visual loop effect.
 """
 import pygame 
 from sys import exit
