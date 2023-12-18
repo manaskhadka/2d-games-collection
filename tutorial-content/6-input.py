@@ -34,43 +34,27 @@ while True:
             print("User exit")
             exit()
 
-        """
-        if event.type == pygame.MOUSEMOTION:
-            if (player_rect.collidepoint(event.pos)):
-                print(f"Mouse collision detected. Buttons: {pygame.mouse.get_pressed()}")
-        """
-
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 print("Jump button pressed")
-                player_gravity = -20
+                if player_rect.bottom == 300: player_gravity = -20
 
     screen.blit(sky_surface, (0, 0))
     screen.blit(ground_surface, (0, 300))
     pygame.draw.rect(screen, box_color, score_rect)
     pygame.draw.rect(screen, "Pink", score_rect, border_radius=14)
     screen.blit(score_surf, score_rect)
-
-
-    pygame.draw.ellipse(screen, "Brown", pygame.Rect(50, 200, 100, 100))
     
     # Snail (Enemy)
     if snail_rect.right <= 0: snail_rect.left = 800
     snail_rect.left -= 4
     screen.blit(snail_surf, snail_rect)
 
-    # Plyaer
+    # Player
     player_gravity += 1
     player_rect.top += player_gravity
+    if player_rect.bottom >= 300: player_rect.bottom = 300
     screen.blit(player_surf, player_rect)
-
-    """
-    Alternative way to do key checks outside of the event loop
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_SPACE]:
-        print("jump key pressed.")
-    """
-
 
     pygame.display.update()
     clock.tick(60)

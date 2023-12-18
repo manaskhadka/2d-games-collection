@@ -33,12 +33,6 @@ while True:
             print("User exit")
             exit()
 
-        """
-        if event.type == pygame.MOUSEMOTION:
-            if (player_rect.collidepoint(event.pos)):
-                print(f"Mouse collision detected. Buttons: {pygame.mouse.get_pressed()}")
-        """
-
     screen.blit(sky_surface, (0, 0))
     screen.blit(ground_surface, (0, 300))
     pygame.draw.rect(screen, box_color, score_rect)
