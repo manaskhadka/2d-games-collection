@@ -6,7 +6,7 @@ import pygame
 from sys import exit
 
 pygame.init()
-pygame.display.set_caption('Animations')
+pygame.display.set_caption('Draw')
 screen = pygame.display.set_mode((800, 400))
 clock = pygame.time.Clock()
 pixel_font = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 50)
