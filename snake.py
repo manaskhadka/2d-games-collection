@@ -5,6 +5,30 @@ import pygame
 from sys import exit
 from random import randint, choice
 
+class PauseScreen():
+    """
+    A class to represent the pause screen and any info to be displayed there
+    """
+    def __init__(self, screen):
+        super().__init__()
+        # Background
+        self.image = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        # self.rect = self.image.get_rect((WINDOW_HEIGHT/2,))
+        self.pause_img = pixel_font_big.render("PAUSED", False, "White")
+        self.pause_rect = self.pause_img.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 150))
+        self.cont_img = pixel_font_small.render("Continue", False, "White")
+        self.cont_rect = self.cont_img.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 50))
+        self.quit_img = pixel_font_small.render("Exit to Main Menu", False, "White")
+        self.quit_rect = self.quit_img.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
+
+    # Display logic
+    def draw(self):
+        self.image.fill("Black")
+        self.image.blit(self.pause_img, self.pause_rect) 
+        self.image.blit(self.cont_img, self.cont_rect)
+        self.image.blit(self.quit_img, self.quit_rect)
+
+        
 class Board():
     """
     A class to represent the board, including the snake, fruit, and empty squares.
@@ -85,13 +109,12 @@ class Board():
             
     def init_board(self):
         counter_y = 0
-        for y in range(100, WINDOW_HEIGHT - 100, block_size):
+        for y in range(WINDOW_OFFSET, WINDOW_HEIGHT - WINDOW_OFFSET, game_settings["block_size"]):
             counter_x = 0
             group = pygame.sprite.Group()
-            for x in range(100, WINDOW_WIDTH - 100, block_size):
+            for x in range(WINDOW_OFFSET, WINDOW_WIDTH - WINDOW_OFFSET, game_settings["block_size"]):
                 cell = Cell((x, y))
                 cell.grid_coord = (counter_x, counter_y)
-                print(cell.grid_coord)
                 group.add(cell)
                 counter_x += 1
             counter_y += 1
@@ -208,10 +231,10 @@ class Board():
 class Cell(pygame.sprite.Sprite):
     def __init__(self, coord):
         super().__init__()
-        surface = pygame.Surface((block_size - cell_spacing, 
-                                  block_size - cell_spacing))
+        w = game_settings["block_size"] - game_settings["cell_spacing"]
+        surface = pygame.Surface((w, w))
         self.image = surface
-        self.rect = self.image.get_rect(center=coord)
+        self.rect = self.image.get_rect(topleft=coord)
         self.is_body = False         # Track if this cell is part of the body (does not include head)
         self.is_head = False         # Track if this cell is the head of the snake
         self.is_fruit = False        # Track if this cell holds a fruit
@@ -221,11 +244,12 @@ class Cell(pygame.sprite.Sprite):
         if (self.is_head):
             self.image.fill("Blue")
         elif (self.is_body):
-            self.image.fill("Gray")
+            self.image.fill("Light Blue")
         elif (self.is_fruit):
             self.image.fill("Red")
         else:
-            self.image.fill("Pink")
+            self.image.fill("Gray")
+
 
 def check_wall_collision(coord: tuple, num_rows: int, num_cols: int) -> bool:
     '''
@@ -255,29 +279,38 @@ pygame.init()
 pygame.display.set_caption('Snake')
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
+WINDOW_OFFSET = 50
 screen = pygame.display.set_mode((800, 600))
+screen_copy = screen
 clock = pygame.time.Clock()
-pixel_font = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 50)
+pixel_font_big = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 80)
+pixel_font_small = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 60)
 
 # Game trackers
-game_active = False
+game_active = True
+game_paused = False
 start_time = 0
 score = 0
 
 # Game settings
-speed_coeff = 8
-block_size = 25
-cell_spacing = int(block_size/10)
+default_game_settings = {
+    "speed_coeff" : 10,
+    "block_size" : 25,
+    "cell_spacing" : int(25/10)
+}
+
+game_settings = default_game_settings.copy()
 
 # Game init
 board = Board()
 board.init_board()
 board.init_snake()
 board.print()
+pause_screen = PauseScreen(screen)
 
 # Timers
 movement_timer = pygame.USEREVENT + 1
-pygame.time.set_timer(movement_timer, int(1000 / speed_coeff))
+pygame.time.set_timer(movement_timer, int(1000 / game_settings["speed_coeff"]))
 
 while True:
     for event in pygame.event.get():
@@ -285,13 +318,31 @@ while True:
             pygame.quit()
             exit()
         
-        if event.type == movement_timer:
-            board.update()
+        if game_active:
+            if not game_paused:
+                if event.type == movement_timer:
+                    board.update()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    game_paused = True
+                    screen_copy = screen
+                    pause_screen.image = screen
+                
+            else:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    game_paused = False
+                    screen = screen_copy
 
-    board.grid[0].draw(screen)
-    for group in board.grid:
-        group.draw(screen)
+    if game_active:
+        screen.fill("Black")
+        if not game_paused:
+            for group in board.grid:
+                group.draw(screen)
+            board.player_input()
+        else:
+            pause_screen.draw()
+    
+    else:
+        pass
 
-    board.player_input()
     pygame.display.update()
     clock.tick(60)
