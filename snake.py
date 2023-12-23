@@ -3,61 +3,9 @@ A recreation of the game snake in pygame.
 """
 import pygame 
 from sys import exit
-from random import randint, choice
-
-class PauseScreen():
-    """
-    A class to represent the pause screen and any info to be displayed there
-    """
-    def __init__(self, screen):
-        super().__init__()
-        cont_pos = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 30)
-        quit_pos = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 45)
-        self.image = screen
-        self.boxes = [cont_pos, quit_pos]
-        self.curr_highlighted = 0
-        self.selected = False
-        
-    def player_input(self, game_tracker):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            if (self.curr_highlighted > 0): 
-                self.curr_highlighted -= 1
-        elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            if (self.curr_highlighted < len(self.boxes) - 1): 
-                self.curr_highlighted += 1
-        elif keys[pygame.K_RETURN] or keys[pygame.K_SPACE]:
-            # TODO: add enums for following
-            if (self.curr_highlighted == 0):
-                game_tracker["game_paused"] = False
-            else:
-                # TODO: quit to main menu
-                print("QUIT PRESSED")
-                pass
-
-    # Display logic
-    def draw(self):
-        self.image.fill("Black")
-        pause_img = pixel_font_big.render("PAUSED", False, "White")
-        pause_rect = pause_img.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 150))
-        cont_img = pixel_font.render("Continue", False, "White")
-        cont_rect = cont_img.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 25))
-        quit_img = pixel_font.render("Exit to Main Menu", False, "White")
-        quit_rect = quit_img.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 50))
-        select_box_img = pygame.Surface((500, 60))
-        select_box_img.fill("darkgray")
-        select_box_rect = select_box_img.get_rect(center=self.boxes[self.curr_highlighted])
-        
-        self.image.blit(select_box_img, select_box_rect)
-        self.image.blit(pause_img, pause_rect) 
-        self.image.blit(cont_img, cont_rect)
-        self.image.blit(quit_img, quit_rect)
-    
-    def update(self, game_tracker):
-        self.player_input(game_tracker)
-        self.draw()
-
-        
+from random import choice
+from shared import *
+      
 class Board():
     """
     A class to represent the board, including the snake, fruit, and empty squares.
@@ -127,6 +75,7 @@ class Board():
         adjacent_snake_cell = ""
         if (self.tail):
             adjacent_snake_cell = get_opposite_direction(self.facing)
+
         if keys[pygame.K_w] or keys[pygame.K_UP] and adjacent_snake_cell != "up":
             self.input_direction = "up"
         elif keys[pygame.K_a] or keys[pygame.K_LEFT] and adjacent_snake_cell != "left":
@@ -144,7 +93,7 @@ class Board():
         for y in range(WINDOW_OFFSET, WINDOW_HEIGHT - WINDOW_OFFSET, game_settings["block_size"]):
             counter_x = 0
             group = pygame.sprite.Group()
-            for x in range(WINDOW_OFFSET, WINDOW_WIDTH - WINDOW_OFFSET, game_settings["block_size"]):
+            for x in range(0, WINDOW_WIDTH, game_settings["block_size"]):
                 cell = Cell((x, y))
                 cell.grid_coord = (counter_x, counter_y)
                 group.add(cell)
@@ -164,6 +113,7 @@ class Board():
         start_cell = self.get_cell((start_row, start_col))
         start_cell.is_head = True
         self.head = start_cell
+        self.tail = None
     
     def move_snake(self):
         # Move the snake in the direction that the head is facing
@@ -305,16 +255,6 @@ def get_opposite_direction(direction):
         return "up"
 
 
-def draw_score(game_tracker):
-    score = game_tracker["score"]
-    high_score = game_tracker["high_score"]
-    s_image = pixel_font_small.render(f"Score: {score}", False, "gray")
-    s_rect = s_image.get_rect(topleft=(WINDOW_OFFSET, 20))
-    hs_image = pixel_font_small.render(f"High Score: {high_score}", False, "gray")
-    hs_rect = hs_image.get_rect(topright=(WINDOW_WIDTH - WINDOW_OFFSET, 20))
-    screen.blit(s_image, s_rect)
-    screen.blit(hs_image, hs_rect)
-
 def game_over_input(board, game_tracker):
     keys = pygame.key.get_pressed()
     if keys[pygame.K_RETURN] or keys[pygame.K_SPACE]:
@@ -331,16 +271,8 @@ def game_over_input(board, game_tracker):
         exit()
 
 # Init
-pygame.init()
 pygame.display.set_caption('Tapeworm')
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
-WINDOW_OFFSET = 50
-screen = pygame.display.set_mode((800, 600))
 clock = pygame.time.Clock()
-pixel_font_big = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 80)
-pixel_font = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 60)
-pixel_font_small = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 30)
 
 # Track game states and other info
 game_tracker = {
@@ -379,21 +311,22 @@ while True:
             if not game_tracker["game_paused"]:
                 if event.type == movement_timer:
                     board.update()
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    game_tracker["game_paused"] = True
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
+                        game_tracker["game_paused"] = True
 
             else:
                 pause_screen.update(game_tracker) 
 
     if game_tracker["game_active"]:
         screen.fill("Black")
-        draw_score(game_tracker)
         if not game_tracker["game_paused"]:
             for group in board.grid:
                 group.draw(screen)
             board.player_input()
         else:
             pause_screen.draw()
+        draw_score(game_tracker)
     
     else:
         # Game over
