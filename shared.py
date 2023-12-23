@@ -5,6 +5,7 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 WINDOW_OFFSET =  40
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+clock = pygame.time.Clock()
 pixel_font_big = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 80)
 pixel_font = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 60)
 pixel_font_small = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 30)
@@ -61,6 +62,29 @@ class PauseScreen():
         self.player_input(game_tracker)
         self.draw()
 
+class Player(pygame.sprite.Sprite):
+    def __init__(self, frames, scale):
+        super().__init__()
+        self.scale = scale
+        self.frames = frames
+        self.frame_index = 0
+        self.image = pygame.transform.scale_by(frames[0], self.scale)
+        self.rect = self.image.get_rect()
+    
+    def player_input(self):
+        """ TO BE OVERWRITTEN """
+        raise NotImplementedError("Player.player_input not overwritten")
+
+    def animation_state(self):
+        self.frame_index += 0.1
+        if self.frame_index >= len(self.frames):
+            self.frame_index = 0
+        img = self.frames[int(self.frame_index)]
+        self.image = pygame.transform.scale_by(img, self.scale)
+
+    def update(self):
+        self.player_input()
+        self.animation_state()
 
 def draw_score(game_tracker):
     score = game_tracker["score"]

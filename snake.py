@@ -272,7 +272,6 @@ def game_over_input(board, game_tracker):
 
 # Init
 pygame.display.set_caption('Tapeworm')
-clock = pygame.time.Clock()
 
 # Track game states and other info
 game_tracker = {
