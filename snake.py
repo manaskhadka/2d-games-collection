@@ -76,13 +76,13 @@ class Board():
         if (self.tail):
             adjacent_snake_cell = get_opposite_direction(self.facing)
 
-        if keys[pygame.K_w] or keys[pygame.K_UP] and adjacent_snake_cell != "up":
+        if (keys[pygame.K_w] or keys[pygame.K_UP]) and adjacent_snake_cell != "up":
             self.input_direction = "up"
-        elif keys[pygame.K_a] or keys[pygame.K_LEFT] and adjacent_snake_cell != "left":
+        elif (keys[pygame.K_a] or keys[pygame.K_LEFT]) and adjacent_snake_cell != "left":
             self.input_direction = "left"
-        elif keys[pygame.K_s] or keys[pygame.K_DOWN] and adjacent_snake_cell != "down":
+        elif (keys[pygame.K_s] or keys[pygame.K_DOWN]) and adjacent_snake_cell != "down":
             self.input_direction = "down"
-        elif keys[pygame.K_d] or keys[pygame.K_RIGHT] and adjacent_snake_cell != "right":
+        elif (keys[pygame.K_d] or keys[pygame.K_RIGHT]) and adjacent_snake_cell != "right":
             self.input_direction = "right"
             
     def init_board(self):
@@ -291,6 +291,7 @@ default_game_settings = {
 game_settings = default_game_settings.copy()
 
 # Game init
+WINDOW_OFFSET =  40
 board = Board()
 board.init_board()
 board.init_snake()
@@ -325,7 +326,7 @@ while True:
             board.player_input()
         else:
             pause_screen.draw()
-        draw_score(game_tracker)
+        draw_score(game_tracker, offset=40)
     
     else:
         # Game over

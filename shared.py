@@ -1,9 +1,9 @@
 import pygame 
+from random import randint
 
 pygame.init()
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
-WINDOW_OFFSET =  40
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
 pixel_font_big = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 80)
@@ -86,12 +86,71 @@ class Player(pygame.sprite.Sprite):
         self.player_input()
         self.animation_state()
 
-def draw_score(game_tracker):
+class GridBackground():
+    def __init__(self, blocksize, scale):
+        self.scale = scale
+        self.total_weight = 0
+        self.grid = []
+        self.block_imgs = []
+        self.selection_ranges = []
+        self.blocksize = blocksize
+    
+    def add_blocks(self, *blocks):
+        for block in blocks:
+            img = block[0]
+            weight = block[1]
+            selection_range = (self.total_weight, self.total_weight + weight)
+            self.total_weight += weight
+            self.block_imgs.append(img)
+            self.selection_ranges.append(selection_range)
+    
+    def choose_block(self):
+        # TODO: optimize the following to O(log(n)) using bisection on selection_ranges
+        selection = randint(0, self.total_weight - 1)
+        for i in range(len(self.selection_ranges)):
+            elem = self.selection_ranges[i]
+            if selection < elem[1]:
+                return i
+
+    def init_background(self, offset):
+        for x in range(0, WINDOW_WIDTH, int(self.blocksize * self.scale)):
+            group = pygame.sprite.Group()
+            for y in range(0, WINDOW_HEIGHT, int(self.blocksize * self.scale)):
+                index = self.choose_block()
+                cell = GridCell(self.block_imgs[index], (x, y), self.scale)
+                group.add(cell)
+            self.grid.append(group)
+    
+    def add_layer(self):
+        pass
+
+    def draw(self, screen):
+        for group in self.grid:
+            group.draw(screen)
+
+    def update(self):
+        for group in self.grid:
+            group.update()
+
+
+class GridCell(pygame.sprite.Sprite):
+    def __init__(self, image, coord, scale):
+        super().__init__()
+        self.image = pygame.transform.scale_by(image, scale)
+        self.rect = self.image.get_rect(topleft=coord)
+    
+    def update(self):
+        # self.rect.y += 10
+        return
+
+
+
+def draw_score(game_tracker, offset):
     score = game_tracker["score"]
     high_score = game_tracker["high_score"]
     s_image = pixel_font_small.render(f"Score: {score}", False, "gray")
-    s_rect = s_image.get_rect(topleft=(WINDOW_OFFSET, 15))
+    s_rect = s_image.get_rect(topleft=(offset, 15))
     hs_image = pixel_font_small.render(f"High Score: {high_score}", False, "gray")
-    hs_rect = hs_image.get_rect(topright=(WINDOW_WIDTH - WINDOW_OFFSET, 15))
+    hs_rect = hs_image.get_rect(topright=(WINDOW_WIDTH - offset, 15))
     screen.blit(s_image, s_rect)
     screen.blit(hs_image, hs_rect)

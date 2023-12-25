@@ -118,7 +118,6 @@ obstacle_group = pygame.sprite.Group()
 # Background
 sky_surface = pygame.image.load("tutorial-content/lib/graphics/Sky.png").convert()
 ground_surface = pygame.image.load("tutorial-content/lib/graphics/ground.png").convert()
-obstacle_rects = []
 
 # Intro screen 
 player_stand = pygame.image.load("tutorial-content/lib/graphics/player/player_stand.png").convert_alpha()

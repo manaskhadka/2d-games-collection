@@ -9,11 +9,10 @@ from shared import *
 class Drill(Player):
     def __init__(self, frames, scale):
         super().__init__(frames, scale)
-        dimensions = (self.image.get_size())
-        print(dimensions)
+        self.dimensions = (self.image.get_size())
         self.x_input = False
         self.vel_x = 0
-        self.start_coord = (WINDOW_WIDTH/2 + WINDOW_OFFSET - dimensions[0], game_settings["max_y_ofs_up"])
+        self.start_coord = (WINDOW_WIDTH/2 - self.dimensions[0], game_settings["max_y_ofs_up"])
         self.rect = self.image.get_rect(topleft=self.start_coord)
         
     def player_input(self):
@@ -53,12 +52,14 @@ class Drill(Player):
         self.x_input = False
 
     def apply_velocity(self):
-        # TODO: bound the following within the window
         self.rect.x += self.vel_x
+        if self.rect.left < LEFT_BOUND:
+            self.rect.left = LEFT_BOUND
+        if self.rect.right > RIGHT_BOUND:
+            self.rect.right = RIGHT_BOUND
     
     def animation_apply_rotate(self):
         # Rotate drill based on its x velocity
-
         angle = int(50 * (self.vel_x / game_settings["vel_limit"]))
         if (abs(angle) > 1):
             # Avoid jitter
@@ -71,7 +72,14 @@ class Drill(Player):
         self.animation_state()
         self.animation_apply_rotate()
         
-        
+
+class Enemy(Player):
+    def __init__(self, frames, scale):
+        super().__init__(frames, scale)
+
+    def player_input(self):
+        return
+    
 
 # Track game states and other info
 game_tracker = {
@@ -93,14 +101,45 @@ default_game_settings = {
 
 game_settings = default_game_settings.copy()
 
-# Game init
-drill_1 = pygame.image.load("lib/graphics/drill1.png").convert_alpha()
-drill_2 = pygame.image.load("lib/graphics/drill2.png").convert_alpha()
-drill_3 = pygame.image.load("lib/graphics/drill3.png").convert_alpha()
-frames = [drill_1, drill_2, drill_3]
-drill_scale = 2.5
-drill = Drill(frames, scale=drill_scale)
+# Player init
+drill_1 = pygame.image.load("lib/graphics/drill-game/drill1.png").convert_alpha()
+drill_2 = pygame.image.load("lib/graphics/drill-game/drill2.png").convert_alpha()
+drill_3 = pygame.image.load("lib/graphics/drill-game/drill3.png").convert_alpha()
+drill_frames = [drill_1, drill_2, drill_3]
+scale = 2.5
+drill = Drill(drill_frames, scale=scale)
 player = pygame.sprite.GroupSingle(drill)
+LEFT_BOUND = drill.dimensions[0]
+RIGHT_BOUND = WINDOW_WIDTH - drill.dimensions[0]
+
+# Enemies init
+mole_1 = pygame.image.load("lib/graphics/drill-game/mole1.png").convert_alpha()
+mole_2 = pygame.image.load("lib/graphics/drill-game/mole2.png").convert_alpha()
+worm_1 = pygame.image.load("lib/graphics/drill-game/worm1.png").convert_alpha()
+worm_2 = pygame.image.load("lib/graphics/drill-game/worm2.png").convert_alpha()
+mole_enemy = Enemy([mole_1, mole_2], scale)
+worm_enemy = Enemy([worm_1, worm_2], scale)
+mole_enemy.rect.center = (100, 300)
+worm_enemy.rect.center = (100, 200)
+enemies = pygame.sprite.Group()
+enemies.add(mole_enemy, worm_enemy)
+
+# Collectables init
+gem1 = pygame.image.load("lib/graphics/drill-game/gem1.png").convert_alpha()
+gem2 = pygame.image.load("lib/graphics/drill-game/gem2.png").convert_alpha()
+gem3 = pygame.image.load("lib/graphics/drill-game/gem3.png").convert_alpha()
+gem4 = pygame.image.load("lib/graphics/drill-game/gem4.png").convert_alpha()
+gems = [gem1, gem2, gem3, gem4]
+
+# Background init
+block_1 = pygame.image.load("lib/graphics/drill-game/dirt1.png").convert_alpha()
+block_2 = pygame.image.load("lib/graphics/drill-game/dirt2.png").convert_alpha()
+block_3 = pygame.image.load("lib/graphics/drill-game/dirt3.png").convert_alpha()
+block_4 = pygame.image.load("lib/graphics/drill-game/dirt4.png").convert_alpha()
+background = GridBackground(block_1.get_size()[0], scale)
+background.add_blocks((block_1, 80), (block_2, 30), (block_3, 40), (block_4, 5))
+background.init_background(20)
+
 pause_screen = PauseScreen(screen)
 
 # Timers
@@ -108,7 +147,21 @@ movement_timer = pygame.USEREVENT + 1
 # pygame.time.set_timer(movement_timer, int(1000 / game_settings["speed_coeff"]))
 
 while True:
-    screen.fill("brown")
+    background.draw(screen)
+    background.update()
+    counter = 0
+    for gem in gems:
+        big = pygame.transform.scale_by(gem, scale)
+        screen.blit(big, big.get_rect(center=(300 + 50*counter, 200 + 50*counter)))
+        counter += 1
+    # screen.fill("brown")
+    wall = pygame.Surface((drill.dimensions[0], WINDOW_HEIGHT))
+    wall_rect = wall.get_rect(bottomright=(LEFT_BOUND, WINDOW_HEIGHT))
+    wall_rect2 = wall.get_rect(bottomleft=(RIGHT_BOUND, WINDOW_HEIGHT))
+    wall.fill("black")
+    screen.blit(wall, wall_rect)
+    screen.blit(wall, wall_rect2)
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -119,8 +172,10 @@ while True:
 
     if game_tracker["game_active"]:
         hitbox = drill.image.copy()
-        hitbox.fill("blue")
+        # hitbox.fill("blue")
         screen.blit(hitbox, drill.rect)
+        enemies.draw(screen)
+        enemies.update()
         player.draw(screen)
         player.update()
 
