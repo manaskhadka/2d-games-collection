@@ -94,6 +94,7 @@ class GridBackground():
         self.block_imgs = []
         self.selection_ranges = []
         self.blocksize = blocksize
+        self.displacement = 0
     
     def add_blocks(self, *blocks):
         for block in blocks:
@@ -113,24 +114,39 @@ class GridBackground():
                 return i
 
     def init_background(self, offset):
-        for x in range(0, WINDOW_WIDTH, int(self.blocksize * self.scale)):
+        b_size = int(self.blocksize * self.scale)
+        for y in range(0, WINDOW_HEIGHT + b_size, b_size):
             group = pygame.sprite.Group()
-            for y in range(0, WINDOW_HEIGHT, int(self.blocksize * self.scale)):
+            for x in range(0, WINDOW_WIDTH, b_size):
                 index = self.choose_block()
                 cell = GridCell(self.block_imgs[index], (x, y), self.scale)
                 group.add(cell)
             self.grid.append(group)
     
     def add_layer(self):
-        pass
-
+        b_size = int(self.blocksize * self.scale)
+        y = WINDOW_HEIGHT
+        if (self.displacement >= b_size):
+            # delete top layer which is offscreen
+            self.grid.pop(0) 
+            # add new layer below, offscreen
+            group = pygame.sprite.Group()
+            for x in range(0, WINDOW_WIDTH, b_size):
+                index = self.choose_block()
+                cell = GridCell(self.block_imgs[index], (x, y), self.scale)
+                group.add(cell)
+            self.grid.append(group)
+            self.displacement = 0
+                
     def draw(self, screen):
         for group in self.grid:
             group.draw(screen)
 
     def update(self):
+        self.add_layer()
         for group in self.grid:
             group.update()
+        self.displacement += 1
 
 
 class GridCell(pygame.sprite.Sprite):
@@ -140,7 +156,7 @@ class GridCell(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=coord)
     
     def update(self):
-        # self.rect.y += 10
+        self.rect.y -= 1
         return
 
 
