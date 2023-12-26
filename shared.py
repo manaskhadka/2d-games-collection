@@ -62,6 +62,7 @@ class PauseScreen():
         self.player_input(game_tracker)
         self.draw()
 
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, frames, scale):
         super().__init__()
@@ -86,6 +87,7 @@ class Player(pygame.sprite.Sprite):
         self.player_input()
         self.animation_state()
 
+
 class GridBackground():
     def __init__(self, blocksize, scale):
         self.scale = scale
@@ -106,6 +108,7 @@ class GridBackground():
             self.selection_ranges.append(selection_range)
     
     def choose_block(self):
+        # TODO: =( this can be entirely replaced by using built in python .choice method (it allows weighting)
         # TODO: optimize the following to O(log(n)) using bisection on selection_ranges
         selection = randint(0, self.total_weight - 1)
         for i in range(len(self.selection_ranges)):
@@ -159,6 +162,25 @@ class GridCell(pygame.sprite.Sprite):
         self.rect.y -= 1
         return
 
+
+class PointObject(pygame.sprite.Sprite):
+    def __init__(self, frames, scale):
+        super().__init__()
+        self.scale = scale
+        self.frames = frames
+        self.frame_index = 0
+        self.image = pygame.transform.scale_by(frames[0], self.scale)
+        self.rect = self.image.get_rect()
+    
+    def animation_state(self):
+        self.frame_index += 0.1
+        if self.frame_index >= len(self.frames):
+            self.frame_index = 0
+        img = self.frames[int(self.frame_index)]
+        self.image = pygame.transform.scale_by(img, self.scale)
+    
+    def update(self):
+        self.animation_state()
 
 
 def draw_score(game_tracker, offset):
