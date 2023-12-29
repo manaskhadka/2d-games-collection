@@ -17,6 +17,7 @@ class Drill(Player):
         self.rect = self.image.get_rect(topleft=self.start_coord)
 
         # Animation logic on hit
+        self.lives = 3
         self.hit = False
         self.num_iframes = 0
         self.damage_frames = []
@@ -27,7 +28,13 @@ class Drill(Player):
             cpy_t = cpy.copy()
             cpy_t.set_alpha(40)
             self.damage_frames.extend([cpy, cpy_t])
-                
+    
+    def init(self):
+        self.rect = self.image.get_rect(topleft=self.start_coord)
+        self.lives = 3
+        self.hit = False
+        self.vel_x = 0
+
     def player_input(self):
         # UP, DOWN: move player position directly
         # LEFT, RIGHT: update player velocity
@@ -74,8 +81,7 @@ class Drill(Player):
     def animation_apply_rotate(self):
         # Rotate drill based on its x velocity
         angle = int(50 * (self.vel_x / game_settings["vel_limit"]))
-        if (abs(angle) > 1):
-            # Avoid jitter
+        if (abs(angle) > 1):  # Avoid jitter
             self.image = pygame.transform.rotate(self.image, angle)
 
     def dmg_animation_state(self):
@@ -174,9 +180,9 @@ class Gem(PointObject):
 def spawn_enemy(e_type : str, facing : str) -> Enemy:
     frames = [mole_1, mole_2] if e_type == "mole" else [worm_1, worm_2]
     if (facing == "right"):
-        coords = (-100, randint(WINDOW_HEIGHT - 50, WINDOW_HEIGHT + 150))
+        coords = (-100, randint(WINDOW_HEIGHT - 50, WINDOW_HEIGHT + 300))
     else:
-        coords = (WINDOW_WIDTH + 100, randint(WINDOW_HEIGHT - 50, WINDOW_HEIGHT + 150))
+        coords = (WINDOW_WIDTH + 100, randint(WINDOW_HEIGHT - 50, WINDOW_HEIGHT + 300))
     return Enemy(frames, scale, e_type, coords, facing)
 
 
@@ -192,20 +198,46 @@ def collide_enemy():
             # TODO: Figure out a better way to give 3 seconds of invulnerability:
             drill.num_iframes = 60 * 3
             drill.dmg_frame_index = int(drill.frame_index * 2)
+            drill.lives -= 1
+            return
 
 
 def collide_valuable():
     hits = pygame.sprite.spritecollide(player.sprite, valuables, dokill=True)
     for gem in hits:
-        print(f"Player hit: gem {gem.gemtype}")
+        game_tracker["score"] += (gem.gemtype + 1) * 50
 
+
+def game_over_input(game_tracker):
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_RETURN] or keys[pygame.K_SPACE]:
+       # CONTINUE
+       init_game(game_tracker)
+
+    elif keys[pygame.K_ESCAPE]:
+        if (__name__ == "__main__"):
+            pygame.quit()
+            exit()
+        else:
+            return -1
+
+def init_game(game_tracker):
+    game_tracker["score"] = 0
+    game_tracker["depth"] = 0
+    game_tracker["game_active"] = True
+    game_tracker["game_paused"] = False
+    background.init_background()
+    enemies.empty()
+    valuables.empty()
+    drill.init()
 
 # Track game states and other info
 game_tracker = {
     "game_active": True,
     "game_paused": False,
     "score": 0,
-    "high_score": 0
+    "high_score": 0,
+    "depth": 0
 }
 
 # Game settings
@@ -245,53 +277,84 @@ block_1 = pygame.image.load("lib/graphics/drill-game/dirt1.png").convert_alpha()
 block_2 = pygame.image.load("lib/graphics/drill-game/dirt2.png").convert_alpha()
 block_3 = pygame.image.load("lib/graphics/drill-game/dirt3.png").convert_alpha()
 block_4 = pygame.image.load("lib/graphics/drill-game/dirt4.png").convert_alpha()
-background = GridBackground(block_1.get_size()[0], scale)
+background = GridBackground(block_1.get_size()[0], 3)
 background.add_blocks((block_1, 80), (block_2, 30), (block_3, 40), (block_4, 5))
-background.init_background(20)
+background.init_background()
 
 pause_screen = PauseScreen(screen)
 
 # Timers
 obstacle_timer = pygame.USEREVENT + 1
-pygame.time.set_timer(obstacle_timer, 1200)
+pygame.time.set_timer(obstacle_timer, 2000)
 
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            exit()
+def drill_game():
+    init_game(game_tracker)
+    
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+            if game_tracker["game_active"] and not game_tracker["game_paused"]:
+                if event.type == obstacle_timer:
+                    for i in range(
+                        0, int(game_tracker["depth"] / 3000) + 1):
+                        print(i)
+                        facing = "left" if randint(0, 1) else "right"
+                        enemy = "worm" if randint(0, 3) else "mole"
+                        enemies.add(spawn_enemy(enemy, facing))
+                        valuables.add(Gem(scale, randint(0, len(Gem.gems)-1)))
+                if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
+                            game_tracker["game_paused"] = True
 
         if game_tracker["game_active"]:
-            if event.type == obstacle_timer:
-                facing = "left" if randint(0, 1) else "right"
-                enemy = "worm" if randint(0, 1) else "mole"
-                enemies.add(spawn_enemy(enemy, facing))
-                valuables.add(Gem(scale, randint(0, len(Gem.gems)-1)))
+            if not game_tracker["game_paused"]:
+                game_tracker["depth"] += 1
+                darkness = int(game_tracker["depth"] / 500) * 7.5
+                if darkness > 200: darkness = 200
+                background.update_darkness(darkness)
+                background.draw(screen)
+                background.update()
+                valuables.draw(screen)
+                valuables.update()
+                enemies.draw(screen)
+                enemies.update()
+                player.draw(screen)
+                player.update()
+                draw_score(game_tracker, offset=65)
 
-    if game_tracker["game_active"]:
-        background.draw(screen)
-        background.update()
-        valuables.draw(screen)
-        valuables.update()
-        enemies.draw(screen)
-        enemies.update()
-        player.draw(screen)
-        player.update()
+                # Collisions
+                collide_valuable()
+                collide_enemy()
+                l_image = pixel_font_small.render(f"Lives: {drill.lives}", False, "gray")
+                l_rect = l_image.get_rect(center=(WINDOW_WIDTH/2 - 20, 25))
+                screen.blit(l_image, l_rect)
 
-        # Collisions
-        collide_valuable()
-        collide_enemy()
+                if drill.lives == 0: game_tracker["game_active"] = False
 
-        wall = pygame.Surface((drill.dimensions[0], WINDOW_HEIGHT))
-        wall_rect = wall.get_rect(bottomright=(LEFT_BOUND, WINDOW_HEIGHT))
-        wall_rect2 = wall.get_rect(bottomleft=(RIGHT_BOUND, WINDOW_HEIGHT))
-        wall.fill("black")
-        screen.blit(wall, wall_rect)
-        screen.blit(wall, wall_rect2)
+                wall = pygame.Surface((drill.dimensions[0], WINDOW_HEIGHT))
+                wall_rect = wall.get_rect(bottomright=(LEFT_BOUND, WINDOW_HEIGHT))
+                wall_rect2 = wall.get_rect(bottomleft=(RIGHT_BOUND, WINDOW_HEIGHT))
+                wall.fill("black")
+                screen.blit(wall, wall_rect)
+                screen.blit(wall, wall_rect2)
+            else:
+                if (pause_screen.update(game_tracker) == -1): return
 
-    else:
-        # Game over
-        pass
+        else:
+            # Game over
+            if (game_tracker["score"] > game_tracker["high_score"]):
+                game_tracker["high_score"] = game_tracker["score"]
+        
+            draw_gameover(screen, "white")
 
-    pygame.display.update()
-    clock.tick(60)
+            if (game_over_input(game_tracker) == -1): return
+
+        pygame.display.update()
+        clock.tick(60)
+
+if __name__ == "__main__":
+    pygame.display.set_caption("Drill Rush")
+    drill_game()

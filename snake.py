@@ -90,7 +90,8 @@ class Board():
         self.body.clear()
         self.fruit.clear()
         counter_y = 0
-        for y in range(WINDOW_OFFSET, WINDOW_HEIGHT - WINDOW_OFFSET, game_settings["block_size"]):
+        ofs = game_settings["window_ofs"]
+        for y in range(ofs, WINDOW_HEIGHT - ofs, game_settings["block_size"]):
             counter_x = 0
             group = pygame.sprite.Group()
             for x in range(0, WINDOW_WIDTH, game_settings["block_size"]):
@@ -265,13 +266,59 @@ def game_over_input(board, game_tracker):
        board.init_snake()
 
     elif keys[pygame.K_ESCAPE]:
-        # QUIT
-        # TODO: make this go to outer menu
-        pygame.quit()
-        exit()
+        if (__name__ == "__main__"):
+            pygame.quit()
+            exit()
+        else:
+            return -1
 
-# Init
-pygame.display.set_caption('Tapeworm')
+def snake_game():
+    # Game init
+    board = Board()
+    board.init_board()
+    board.init_snake()
+    pause_screen = PauseScreen(screen)
+
+    # Timers
+    movement_timer = pygame.USEREVENT + 2
+    pygame.time.set_timer(movement_timer, int(1000 / game_settings["speed_coeff"]))
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+            if game_tracker["game_active"] and not game_tracker["game_paused"]:
+                    if event.type == movement_timer:
+                        board.update()
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
+                            game_tracker["game_paused"] = True
+
+        if game_tracker["game_active"]:
+            screen.fill("Black")
+            if not game_tracker["game_paused"]:
+                for group in board.grid:
+                    group.draw(screen)
+                board.player_input()
+            else:
+                if (pause_screen.update(game_tracker) == -1): return
+            draw_score(game_tracker, offset=40)
+        
+        else:
+            # Game over
+            if (game_tracker["score"] > game_tracker["high_score"]):
+                game_tracker["high_score"] = game_tracker["score"]
+        
+            draw_gameover(screen, "black")
+
+            if (game_over_input(board, game_tracker) == -1): return                
+
+        # TODO: there's a blackframe on every game refresh. FIX: reset the game board after updating display
+        pygame.display.update()
+        clock.tick(60)
+
 
 # Track game states and other info
 game_tracker = {
@@ -285,68 +332,13 @@ game_tracker = {
 default_game_settings = {
     "speed_coeff" : 8,
     "block_size" : 20,
-    "cell_spacing" : 0        # For debugging
+    "cell_spacing" : 0,        # For debugging
+    "window_ofs" : 40
 }
 
 game_settings = default_game_settings.copy()
 
-# Game init
-WINDOW_OFFSET =  40
-board = Board()
-board.init_board()
-board.init_snake()
-pause_screen = PauseScreen(screen)
 
-# Timers
-movement_timer = pygame.USEREVENT + 1
-pygame.time.set_timer(movement_timer, int(1000 / game_settings["speed_coeff"]))
-
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            exit()
-
-        if game_tracker["game_active"]:
-            if not game_tracker["game_paused"]:
-                if event.type == movement_timer:
-                    board.update()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
-                        game_tracker["game_paused"] = True
-
-            else:
-                pause_screen.update(game_tracker) 
-
-    if game_tracker["game_active"]:
-        screen.fill("Black")
-        if not game_tracker["game_paused"]:
-            for group in board.grid:
-                group.draw(screen)
-            board.player_input()
-        else:
-            pause_screen.draw()
-        draw_score(game_tracker, offset=40)
-    
-    else:
-        # Game over
-        if (game_tracker["score"] > game_tracker["high_score"]):
-            game_tracker["high_score"] = game_tracker["score"]
-    
-        x, y = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2)
-        end_text = pixel_font_big.render("GAME OVER", False, "black")
-        end_text_rect = end_text.get_rect(center=(x, y))
-        cont_text = pixel_font_small.render("press SPACE or RETURN to continue", False, "black")
-        cont_text_rect = cont_text.get_rect(center=(x, y + 40))
-        return_text = pixel_font_small.render("press ESC to exit to menu", False, "black")
-        return_text_rect = return_text.get_rect(center=(x, y + 65))
-
-        screen.blit(end_text, end_text_rect)
-        screen.blit(cont_text, cont_text_rect)
-        screen.blit(return_text, return_text_rect)
-
-        game_over_input(board, game_tracker)
-
-    # TODO: there's a blackframe on every game refresh. FIX: reset the game board after updating display
-    pygame.display.update()
-    clock.tick(60)
+if __name__ == "__main__":
+    pygame.display.set_caption('Tapeworm')
+    snake_game()

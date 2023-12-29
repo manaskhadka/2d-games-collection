@@ -9,6 +9,7 @@ clock = pygame.time.Clock()
 pixel_font_big = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 80)
 pixel_font = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 60)
 pixel_font_small = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 30)
+pixel_font_small2 = pygame.font.Font("tutorial-content/lib/font/Pixeltype.ttf", 45)
 
 class PauseScreen():
     """
@@ -30,16 +31,14 @@ class PauseScreen():
             if (self.curr_highlighted > 0): 
                 self.curr_highlighted -= 1
         elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            if (self.curr_highlighted < len(self.boxes) - 1): 
+            if (self.curr_highlighted < len(self.boxes) - 1):
                 self.curr_highlighted += 1
         elif keys[pygame.K_RETURN] or keys[pygame.K_SPACE]:
             # TODO: add enums for following
             if (self.curr_highlighted == 0):
                 game_tracker["game_paused"] = False
             else:
-                # TODO: quit to main menu
-                print("QUIT PRESSED")
-                pass
+                return -1
 
     def draw(self):
         self.image.fill("Black")
@@ -59,8 +58,9 @@ class PauseScreen():
         self.image.blit(quit_img, quit_rect)
     
     def update(self, game_tracker):
-        self.player_input(game_tracker)
+        status = self.player_input(game_tracker)
         self.draw()
+        return status
 
 
 class Player(pygame.sprite.Sprite):
@@ -97,6 +97,10 @@ class GridBackground():
         self.selection_ranges = []
         self.blocksize = blocksize
         self.displacement = 0
+
+        # Used for shading effects for drill game
+        self.black_overlay = pygame.surface.Surface((128, 128))
+        self.black_overlay.set_alpha(0)
     
     def add_blocks(self, *blocks):
         for block in blocks:
@@ -116,7 +120,9 @@ class GridBackground():
             if selection < elem[1]:
                 return i
 
-    def init_background(self, offset):
+    def init_background(self):
+        self.displacement = 0
+        self.grid.clear()
         b_size = int(self.blocksize * self.scale)
         for y in range(0, WINDOW_HEIGHT + b_size, b_size):
             group = pygame.sprite.Group()
@@ -125,6 +131,10 @@ class GridBackground():
                 cell = GridCell(self.block_imgs[index], (x, y), self.scale)
                 group.add(cell)
             self.grid.append(group)
+    
+
+    def update_darkness(self, value):
+        self.black_overlay.set_alpha(value)
     
     def add_layer(self):
         b_size = int(self.blocksize * self.scale)
@@ -137,6 +147,7 @@ class GridBackground():
             for x in range(0, WINDOW_WIDTH, b_size):
                 index = self.choose_block()
                 cell = GridCell(self.block_imgs[index], (x, y), self.scale)
+                cell.image.blit(self.black_overlay, (0, 0))
                 group.add(cell)
             self.grid.append(group)
             self.displacement = 0
@@ -192,3 +203,16 @@ def draw_score(game_tracker, offset):
     hs_rect = hs_image.get_rect(topright=(WINDOW_WIDTH - offset, 15))
     screen.blit(s_image, s_rect)
     screen.blit(hs_image, hs_rect)
+
+def draw_gameover(screen, color):
+    x, y = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2)
+    end_text = pixel_font_big.render("GAME OVER", False, color)
+    end_text_rect = end_text.get_rect(center=(x, y))
+    cont_text = pixel_font_small.render("press SPACE or RETURN to continue", False, color)
+    cont_text_rect = cont_text.get_rect(center=(x, y + 40))
+    return_text = pixel_font_small.render("press ESC to exit to menu", False, color)
+    return_text_rect = return_text.get_rect(center=(x, y + 65))
+
+    screen.blit(end_text, end_text_rect)
+    screen.blit(cont_text, cont_text_rect)
+    screen.blit(return_text, return_text_rect)
