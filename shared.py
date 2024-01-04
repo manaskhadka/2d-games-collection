@@ -1,6 +1,7 @@
 import pygame 
 from random import randint
 
+# Vars to be used across games
 pygame.init()
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
@@ -71,13 +72,15 @@ class Player(pygame.sprite.Sprite):
         self.frame_index = 0
         self.image = pygame.transform.scale_by(frames[0], self.scale)
         self.rect = self.image.get_rect()
-    
+        
     def player_input(self):
         """ TO BE OVERWRITTEN """
         raise NotImplementedError("Player.player_input not overwritten")
 
-    def animation_state(self):
-        self.frame_index += 0.1
+    def idle_animation_state(self, speed_inc=0.1):
+        # TODO: This works, but is it really a good way to do this? (performance)
+        #       ^ Probably not, considering it has eaten upto 5% of my CPU
+        self.frame_index += speed_inc
         if self.frame_index >= len(self.frames):
             self.frame_index = 0
         img = self.frames[int(self.frame_index)]
@@ -85,7 +88,7 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         self.player_input()
-        self.animation_state()
+        self.idle_animation_state()
 
 
 class GridBackground():

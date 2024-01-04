@@ -100,7 +100,7 @@ class Drill(Player):
         if (self.hit):
             self.dmg_animation_state()
         else:
-            self.animation_state()
+            self.idle_animation_state()
         self.animation_apply_rotate()
         
 
@@ -142,7 +142,7 @@ class Enemy(Player):
             self.kill()
 
     def update(self):
-        self.animation_state()
+        self.idle_animation_state()
         self.flip_self()
         self.movement()
         self.destroy()
