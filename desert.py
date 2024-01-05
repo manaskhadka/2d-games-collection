@@ -13,7 +13,8 @@ game_settings = {
     "jump_force": -0.030,       # Adds to jump height if jump button held
     "jump_time": 60,            # Num frames jump_force can be applied (subtracted by jump_wait)
     "jump_wait": 30,            # Number of frames before jump_force can be applied
-    "gravity_acc": 0.025        # Applies continual downward force
+    "gravity_acc": 0.025,       # Applies continual downward force
+    "t_vel": 2
 }
 
 class Platform(pygame.sprite.Sprite):
@@ -47,7 +48,7 @@ class DesertPlayer(Player):
         obj = tmx_data.get_object_by_name("Player")
         self.start_pos = (obj.x*SCALE, obj.y*SCALE)
         self.rect = self.image.get_rect(topleft=self.start_pos)
-        self.jumping = True 
+        self.airborne = True 
         self.jump_counter = 0
         self.jump_pause = 0
         self.running = False
@@ -59,15 +60,14 @@ class DesertPlayer(Player):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
             # Make player jump
-            if (not self.jumping):
-                self.jumping = True
+            if (not self.airborne):
+                self.airborne = True
                 self.velocity.y = game_settings["jump_init_vel"]
                 self.jump_counter = game_settings["jump_time"]
                 self.jump_pause = game_settings["jump_wait"]
             
             # Make jump bigger if the button is held down in the air
-            elif (self.jumping and self.jump_counter > 0 and self.jump_pause == 0):
-                print("jf")
+            elif (self.airborne and self.jump_counter > 0 and self.jump_pause <= 0):
                 self.velocity.y += game_settings["jump_force"]
 
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
@@ -91,23 +91,44 @@ class DesertPlayer(Player):
     def apply_physics(self):
         # Updates the current position vector using velocity vector
         self.curr_pos.y += self.velocity.y
-        # Velocity should increase if negative 
-        if (self.jumping):
-            self.velocity.y += 0.03
-            if (self.jump_pause > 0): self.jump_pause -= 1
+        if (self.airborne):
+            if self.velocity.y <= game_settings["t_vel"]:
+                self.velocity.y += game_settings["gravity_acc"]
+            self.jump_pause -= 1
             self.jump_counter -= 1
-
-        if (self.velocity.y > 0.01 and self.velocity.y < 0.01):
+        else:
             self.velocity.y = 0
-
-        if (self.curr_pos.y > 480): 
-            self.curr_pos.y = 480
-            self.jumping = False
-            self.jump_counter = 0
         
-        self.rect.y = self.curr_pos.y
+    def movement(self):
+        # Horizontal movement + collisions
         self.rect.x = self.curr_pos.x
+        collisions = pygame.sprite.spritecollide(self, platform_group, dokill=False)
+        for p in collisions:
+            if self.facing_left:
+                self.rect.left = p.rect.right
+            else:
+                self.rect.right = p.rect.left
+        self.curr_pos.x = self.rect.x 
 
+        # Vertical movement + collisions
+        self.rect.y = self.curr_pos.y
+        collisions = pygame.sprite.spritecollide(self, platform_group, dokill=False)
+        floor_collision = False
+        for p in collisions:
+            if self.velocity.y >= 0:
+                self.airborne = False 
+                self.jump_counter = 0
+                self.rect.bottom = p.rect.top
+                floor_collision = True
+            else:
+                self.rect.top = p.rect.bottom
+                # If you hit your head, you can't extend jump
+                self.jump_counter = 0
+                self.velocity.y = -0.01  # < 0 due to other collision check
+        
+        if (not floor_collision): self.airborne = True
+        self.curr_pos.y = self.rect.y
+        
 
     def jump_animation_state(self, speed_inc):
         return 
@@ -120,7 +141,7 @@ class DesertPlayer(Player):
         self.image = pygame.transform.scale_by(img, self.scale)
 
     def animate(self):
-        if (self.jumping):
+        if (self.airborne):
             self.jump_animation_state(speed_inc=0.1)
         if (self.running):
             self.run_animation_state(speed_inc=0.025)
@@ -134,6 +155,7 @@ class DesertPlayer(Player):
         self.animate()
         self.player_input()
         self.apply_physics()
+        self.movement()
 
 platform_group = pygame.sprite.Group()
 bg_group = pygame.sprite.Group()
@@ -150,7 +172,9 @@ for layer in tmx_data.visible_layers:
                 else:
                     BGTile(pos=pos, surf=surf, groups=bg_group)
 
-
+# Hitbox for debugging:
+hb = player_group.sprite.image 
+hb.fill("blue")
 while True: 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -158,11 +182,14 @@ while True:
             exit()
 
     screen.fill("black")
-    
+
     bg_group.draw(screen)
     platform_group.draw(screen)
+
+    screen.blit(hb, player_group.sprite.rect)
     player_group.draw(screen)
     player_group.update()
+
 
     pygame.display.update()
     # clock.tick(60)
