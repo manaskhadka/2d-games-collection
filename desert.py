@@ -8,21 +8,21 @@ SCALE = 2.5     # scale to apply before rendering anything
 TILESIZE = 16   # tiles are 16 x 16 pixels
 
 game_settings = {
-    "p_movespeed": 0.8
+    "p_movespeed": 0.8,         # Player left / right movespeed
+    "jump_init_vel": -2.5,      # Controls min jump height
+    "jump_force": -0.030,       # Adds to jump height if jump button held
+    "jump_time": 60,            # Num frames jump_force can be applied (subtracted by jump_wait)
+    "jump_wait": 30,            # Number of frames before jump_force can be applied
+    "gravity_acc": 0.025        # Applies continual downward force
 }
 
-print("------ LAYERS -------")
-for layer in tmx_data.visible_layers:
-    print(layer.name)
+class Platform(pygame.sprite.Sprite):
+    def __init__(self, pos, surf, groups):
+        super().__init__(groups)
+        self.image = pygame.transform.scale_by(surf, SCALE)
+        self.rect = self.image.get_rect(topleft=pos)
 
-print("------ OBJECTS -------")
-object_layer = tmx_data.get_layer_by_name('Objects')
-for obj in object_layer:
-    print(obj, obj.x, obj.y, obj.image)
-
-
-
-class Tile(pygame.sprite.Sprite):
+class BGTile(pygame.sprite.Sprite):
     def __init__(self, pos, surf, groups):
         super().__init__(groups)
         self.image = pygame.transform.scale_by(surf, SCALE)
@@ -47,28 +47,37 @@ class DesertPlayer(Player):
         obj = tmx_data.get_object_by_name("Player")
         self.start_pos = (obj.x*SCALE, obj.y*SCALE)
         self.rect = self.image.get_rect(topleft=self.start_pos)
-        self.jumping = False 
+        self.jumping = True 
+        self.jump_counter = 0
+        self.jump_pause = 0
         self.running = False
-        self.flip = False
+        self.facing_left = False
         self.curr_pos = pygame.Vector2(self.start_pos)
         self.velocity = pygame.Vector2()
 
     def player_input(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
+            # Make player jump
             if (not self.jumping):
-                print("JUMP")
                 self.jumping = True
-                self.velocity.y = -3.5
+                self.velocity.y = game_settings["jump_init_vel"]
+                self.jump_counter = game_settings["jump_time"]
+                self.jump_pause = game_settings["jump_wait"]
+            
+            # Make jump bigger if the button is held down in the air
+            elif (self.jumping and self.jump_counter > 0 and self.jump_pause == 0):
+                print("jf")
+                self.velocity.y += game_settings["jump_force"]
 
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.curr_pos.x -= game_settings["p_movespeed"]
             self.running = True
-            self.flip = True
+            self.facing_left = True
         elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.curr_pos.x += game_settings["p_movespeed"]
             self.running = True
-            self.flip = False
+            self.facing_left = False
         elif keys[pygame.K_w] or keys[pygame.K_UP]:
             # TODO: Pan camera up
             pass
@@ -80,21 +89,25 @@ class DesertPlayer(Player):
         
     
     def apply_physics(self):
+        # Updates the current position vector using velocity vector
         self.curr_pos.y += self.velocity.y
         # Velocity should increase if negative 
         if (self.jumping):
             self.velocity.y += 0.03
-        
+            if (self.jump_pause > 0): self.jump_pause -= 1
+            self.jump_counter -= 1
+
         if (self.velocity.y > 0.01 and self.velocity.y < 0.01):
             self.velocity.y = 0
 
         if (self.curr_pos.y > 480): 
             self.curr_pos.y = 480
             self.jumping = False
-
-        self.rect.x = self.curr_pos.x 
+            self.jump_counter = 0
+        
         self.rect.y = self.curr_pos.y
-        # print(self.velocity)
+        self.rect.x = self.curr_pos.x
+
 
     def jump_animation_state(self, speed_inc):
         return 
@@ -114,15 +127,16 @@ class DesertPlayer(Player):
         else:
             self.idle_animation_state(speed_inc=0.005)
         
-        if (self.flip): 
+        if (self.facing_left): 
             self.image = pygame.transform.flip(self.image, flip_x=True, flip_y=False)
     
     def update(self):
         self.animate()
         self.player_input()
         self.apply_physics()
-    
-sprite_group = pygame.sprite.Group()
+
+platform_group = pygame.sprite.Group()
+bg_group = pygame.sprite.Group()
 player = DesertPlayer()
 player_group = pygame.sprite.GroupSingle(player)
 
@@ -131,7 +145,11 @@ for layer in tmx_data.visible_layers:
         if hasattr(layer, 'data'):     
             for x, y, surf in layer.tiles():
                 pos = (x*TILESIZE*SCALE, y*TILESIZE*SCALE)
-                Tile(pos=pos, surf=surf, groups=sprite_group)
+                if layer.name == "Platforms":
+                    Platform(pos=pos, surf=surf, groups=platform_group)
+                else:
+                    BGTile(pos=pos, surf=surf, groups=bg_group)
+
 
 while True: 
     for event in pygame.event.get():
@@ -141,8 +159,8 @@ while True:
 
     screen.fill("black")
     
-    
-    sprite_group.draw(screen)
+    bg_group.draw(screen)
+    platform_group.draw(screen)
     player_group.draw(screen)
     player_group.update()
 
