@@ -4,7 +4,7 @@ from shared import *
 from pytmx.util_pygame import load_pygame
 
 tmx_data = load_pygame("C:/Users/manaz/Desktop/Work/Game-Tinker/Tiled/Desert Game/test-level.tmx")
-SCALE = 2.5     # scale to apply before rendering anything 
+SCALE = 2.5     # scale to apply before rendering anything (16 pixels * 15 tiles * 2.5 = WINDOW_HEIGHT)
 TILESIZE = 16   # tiles are 16 x 16 pixels
 
 LEFT = -1
@@ -66,74 +66,33 @@ class DesertPlayer(Player):
         obj = tmx_data.get_object_by_name("Player")
         self.start_pos = (obj.x*SCALE, obj.y*SCALE)
         self.rect = self.image.get_rect(topleft=self.start_pos)
+        self.global_x = self.rect.left
         
-        # Movement
+        # Movement & Collision Detection
         self.direction = NO_INPUT
         self.velocity = pygame.Vector2()
         self.airborne = True 
         self.jump_counter = 0
         self.jump_pause = 0
+        self.facing = RIGHT
 
     def player_input(self):
         keys = pygame.key.get_pressed()
         # Vertical movement (Jump)
         if keys[pygame.K_SPACE]: self.jump()
-        
         # Horizontal movement
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.direction = LEFT
+            self.facing = LEFT
         elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.direction = RIGHT
+            self.facing = RIGHT
         else:
             self.direction = NO_INPUT
-
-        # Camera control
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            # TODO: Pan camera up
-            pass
-        elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            # TODO: Pan camera down
-            pass
+        
+        if keys[pygame.K_UP]:
+            print(self.global_x)
     
-    
-    def apply_physics(self):
-        # Updates the current position vector using velocity vector
-        if (self.airborne):
-            if self.velocity.y <= game_settings["t_vel"]:
-                self.velocity.y += game_settings["gravity_acc"]
-            self.jump_pause -= 1
-            self.jump_counter -= 1
-        else:
-            self.velocity.y = 0
-        
-    def movement(self):
-        # Horizontal movement + collisions
-        player.rect.x += player.direction * self.velocity.x
-        collisions = pygame.sprite.spritecollide(self, platform_group, dokill=False)
-        for p in collisions:
-            if self.direction == LEFT:
-                self.rect.left = p.rect.right
-            elif self.direction == RIGHT:
-                self.rect.right = p.rect.left
-
-        # Vertical movement + collisions
-        self.rect.y += self.velocity.y
-        collisions = pygame.sprite.spritecollide(self, platform_group, dokill=False)
-        floor_collision = False
-        for p in collisions:
-            if self.velocity.y >= 0:
-                self.airborne = False 
-                self.jump_counter = 0
-                self.rect.bottom = p.rect.top
-                floor_collision = True
-            else:
-                self.rect.top = p.rect.bottom
-                # If you hit your head, you can't extend jump
-                self.jump_counter = 0
-                self.velocity.y = -0.01  # < 0 due to other collision check
-        
-        if (not floor_collision): self.airborne = True
-        
     def jump(self):
         # Make player jump
         if (not self.airborne):
@@ -145,6 +104,63 @@ class DesertPlayer(Player):
         # Make jump bigger if the button is held down in the air
         elif (self.airborne and self.jump_counter > 0 and self.jump_pause <= 0):
             self.velocity.y += game_settings["jump_force"]
+    
+    def apply_physics(self):
+        # Updates the current position vector using velocity vector
+        if (self.airborne):
+            if self.velocity.y <= game_settings["t_vel"]:
+                self.velocity.y += game_settings["gravity_acc"]
+            self.jump_pause -= 1
+            self.jump_counter -= 1
+        else:
+            self.velocity.y = 0
+        
+    def x_movement_check_collisions(self):
+        # TODO: bugfix - sometimes on horizontal collision, the player
+        #       collides deeper than they should (only 2x deeper has been detected)
+
+        # Horizontal movement + collisions
+        player.rect.x += player.direction * self.velocity.x
+        collisions = pygame.sprite.spritecollide(self, platform_group, dokill=False)
+        if (not collisions): 
+            player.global_x += player.direction * self.velocity.x
+            player.global_x -= game_tracker["world_shift"]
+        for p in collisions:
+            if self.direction == LEFT or self.facing == LEFT:
+                # Push player forward to right of block
+                dist = p.rect.right - self.rect.left
+                if dist > game_settings["def_movespeed"]: 
+                    player.global_x += game_settings["def_movespeed"]
+                self.rect.left = p.rect.right
+            elif self.direction == RIGHT or self.facing == RIGHT:
+                # Pull player backward to left of block
+                dist = self.rect.right - p.rect.left
+                if dist > game_settings["def_movespeed"]: 
+                    player.global_x -= game_settings["def_movespeed"]
+                self.rect.right = p.rect.left
+            else:
+                print("BUG: Unresolved Horizontal Collision")
+
+    def y_movement_check_collisions(self):
+        # Vertical movement + collisions
+        self.rect.y += self.velocity.y
+        collisions = pygame.sprite.spritecollide(self, platform_group, dokill=False)
+        floor_collision = False
+        for p in collisions:
+            if self.velocity.y > 0:
+                self.airborne = False 
+                self.jump_counter = 0
+                self.rect.bottom = p.rect.top
+                floor_collision = True
+            elif self.velocity.y < 0:
+                self.rect.top = p.rect.bottom
+                # If you hit your head, you can't extend jump
+                self.jump_counter = 0
+                self.velocity.y = -0.01  # < 0 due to other collision check
+            else:
+                print("BUG: Unresolved Vertical Collision")
+        
+        if (not floor_collision): self.airborne = True
 
     def jump_animation_state(self, speed_inc):
         return 
@@ -164,29 +180,37 @@ class DesertPlayer(Player):
         else:
             self.idle_animation_state(speed_inc=0.05)
         
-        if (self.direction == LEFT): 
+        if (self.facing == LEFT): 
             self.image = pygame.transform.flip(self.image, flip_x=True, flip_y=False)
     
     def update(self):
         self.animate()
         self.apply_physics()
-        self.movement()
+        self.x_movement_check_collisions()
+        self.y_movement_check_collisions()
         self.player_input()
 
 def scroll_x(player_group):
     player = player_group.sprite
     player_x = player.rect.centerx
     direction_x = player.direction
+    speed = game_settings["def_movespeed"]
 
-    if player_x < WINDOW_WIDTH / 4 and direction_x < 0:
-        game_tracker["world_shift"] = game_settings["def_movespeed"]
-        player.velocity.x = 0
-    elif player_x > WINDOW_WIDTH - (WINDOW_WIDTH / 4) and direction_x > 0:
-        game_tracker["world_shift"] = -1*game_settings["def_movespeed"]
-        player.velocity.x = 0
-    else:
-        game_tracker["world_shift"] = 0
-        player.velocity.x = game_settings["def_movespeed"]
+    if player_x <= WINDOW_WIDTH / 2 and direction_x == LEFT:
+        if player.global_x > WINDOW_WIDTH / 2 - 32:
+            game_tracker["world_shift"] = speed
+            player.velocity.x = 0
+            return
+        
+    elif player_x > WINDOW_WIDTH / 2 and direction_x == RIGHT:
+        if player.global_x < 1200 - WINDOW_WIDTH / 2 - 38:
+            game_tracker["world_shift"] = -1*speed
+            player.velocity.x = 0
+            return
+        
+    game_tracker["world_shift"] = 0
+    player.velocity.x = speed
+
 
 platform_group = pygame.sprite.Group()
 bg_group = pygame.sprite.Group()
