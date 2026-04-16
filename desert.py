@@ -3,7 +3,7 @@ import os
 from shared import *
 from pytmx.util_pygame import load_pygame
 
-tmx_data = load_pygame("C:/Users/manaz/Desktop/Work/Game-Tinker/Tiled/Desert Game/test-level.tmx")
+tmx_data = load_pygame("lib/graphics/desert-game/test-level.tmx")
 SCALE = 2.5     # scale to apply before rendering anything (16 pixels * 15 tiles * 2.5 = WINDOW_HEIGHT)
 TILESIZE = 16   # tiles are 16 x 16 pixels
 
@@ -23,7 +23,9 @@ game_settings = {
 
 game_tracker = {
     "world_shift": 0,
-    "player_speed": 0
+    "player_speed": 0,
+    "game_paused": False,
+    "in_game": True
 }
 
 class Platform(pygame.sprite.Sprite):
@@ -91,7 +93,8 @@ class DesertPlayer(Player):
             self.direction = NO_INPUT
         
         if keys[pygame.K_UP]:
-            print(self.global_x)
+            # print(self.global_x)
+            pass
     
     def jump(self):
         # Make player jump
@@ -117,7 +120,8 @@ class DesertPlayer(Player):
         
     def x_movement_check_collisions(self):
         # TODO: bugfix - sometimes on horizontal collision, the player
-        #       collides deeper than they should (only 2x deeper has been detected)
+        #       collides deeper than they should (only 2x deeper has been detected).
+        #       this results in the player global position being updated incorrectly
 
         # Horizontal movement + collisions
         player.rect.x += player.direction * self.velocity.x
@@ -197,13 +201,13 @@ def scroll_x(player_group):
     speed = game_settings["def_movespeed"]
 
     if player_x <= WINDOW_WIDTH / 2 and direction_x == LEFT:
-        if player.global_x > WINDOW_WIDTH / 2 - 32:
+        # if player.global_x > WINDOW_WIDTH / 2 - 32:
             game_tracker["world_shift"] = speed
             player.velocity.x = 0
             return
         
     elif player_x > WINDOW_WIDTH / 2 and direction_x == RIGHT:
-        if player.global_x < 1200 - WINDOW_WIDTH / 2 - 38:
+        # if player.global_x < 1200 - WINDOW_WIDTH / 2 - 38:
             game_tracker["world_shift"] = -1*speed
             player.velocity.x = 0
             return
@@ -227,29 +231,55 @@ for layer in tmx_data.visible_layers:
             else:
                 BGTile(pos=pos, surf=surf, groups=bg_group)
 
-# Hitbox for debugging:
-hb = player_group.sprite.image 
-hb.fill("blue")
-while True: 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            exit()
 
-    screen.fill("black")
 
-    # Level tiles
-    bg_group.update(game_tracker["world_shift"])
-    bg_group.draw(screen)
-    platform_group.update(game_tracker["world_shift"])
-    platform_group.draw(screen)
-    scroll_x(player_group)
+def desert_game():
+    pause_screen = PauseScreen(screen)
+    # Hitbox for debugging:
+    hb = player_group.sprite.image 
+    hb.fill("blue")
 
-    # Player
-    player_group.update()
-    screen.blit(hb, player_group.sprite.rect)
-    player_group.draw(screen)
+    while game_tracker["in_game"]: 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
 
-    pygame.display.update()
-    clock.tick(60)
+            # Toggle pause
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    game_tracker["game_paused"] = not game_tracker["game_paused"]
+
+        if game_tracker["game_paused"]:
+            status = pause_screen.update(game_tracker)
+
+            if status == -1:
+                # Exit to main menu
+                game_tracker["in_game"] = False
+
+            pygame.display.update()
+            clock.tick(60)
+            continue   # skip game update
+
+        screen.fill("black")
+
+        # Level tiles
+        bg_group.update(game_tracker["world_shift"])
+        bg_group.draw(screen)
+
+        platform_group.update(game_tracker["world_shift"])
+        platform_group.draw(screen)
+
+        scroll_x(player_group)
+
+        # Player
+        player_group.update()
+        screen.blit(hb, player_group.sprite.rect)
+        player_group.draw(screen)
+
+        pygame.display.update()
+        clock.tick(60)
+if __name__ == "__main__":
+    pygame.display.set_caption("Desert Game")
+    desert_game()
     

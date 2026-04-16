@@ -2,6 +2,7 @@ import pygame
 from shared import *
 from snake import snake_game
 from drill import drill_game
+from desert import desert_game
 
 def display_text_block(text):
     if not text: return
@@ -67,7 +68,19 @@ g2_txt = [
     "As you go deeper, the dangers only grow"
 ]
 
-g3_txt = []
+g3_txt = [
+    "Desert Game (Demo)",
+    "",
+    "CONTROLS:",
+    "Press WASD or the arrow keys to move.",
+    "Move towards the right to the goal",
+    "",
+    "DESCRIPTION:",
+    "This is a simple platforming game.",
+    "Very barebones, simple movement and collisions",
+    "You are a desert spirit, awoken in a crypt",
+    "What has disturbed your slumber...?"
+]
 all_text = [about_txt, g1_txt, g2_txt, g3_txt]
 
 # Main Window
@@ -78,7 +91,7 @@ title = pixel_font_big.render("2d Games Collection", False, "white")
 about = pixel_font.render("About", False, "white")
 g1 = pixel_font.render("Tapeworm", False, "white")
 g2 = pixel_font.render("Drill Rush", False, "white")
-g3 = pixel_font.render("TBD", False, "white")
+g3 = pixel_font.render("Desert Game", False, "white")
 
 title_r = title.get_rect(center=(WINDOW_WIDTH/2, 60))
 about_r = about.get_rect(topleft=(30, 120))
@@ -118,6 +131,8 @@ while True:
                     snake_game()
                 elif (select_index == 2):
                     drill_game()
+                elif (select_index == 3):
+                    desert_game()
 
     screen.fill("black")
     selector_r.y = start_y + select_index * offset
