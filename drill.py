@@ -300,7 +300,7 @@ def drill_game():
                 if event.type == obstacle_timer:
                     for i in range(
                         0, int(game_tracker["depth"] / 3000) + 1):
-                        print(i)
+                        # print(i)
                         facing = "left" if randint(0, 1) else "right"
                         enemy = "worm" if randint(0, 3) else "mole"
                         enemies.add(spawn_enemy(enemy, facing))
